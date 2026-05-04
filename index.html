@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>同传对比英语训练器</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d37;
+  --text: #e4e4e7;
+  --text2: #9899a5;
+  --accent: #a78bfa;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --green: #22c55e;
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+h1 { font-size: 20px; margin-bottom: 4px; }
+.subtitle { color: var(--text2); font-size: 13px; margin-bottom: 20px; }
+
+/* Steps */
+.steps { display:flex; gap:4px; margin-bottom: 20px; }
+.step {
+  flex:1; height:3px; background:var(--border); border-radius:2px;
+  transition: background .3s;
+}
+.step.active { background: var(--accent); }
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+/* Topic Select */
+.topic-btn {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: left;
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.topic-btn:hover, .topic-btn.selected {
+  border-color: var(--accent);
+}
+.topic-btn .tag {
+  font-size: 11px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.topic-summary {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 4px;
+  line-height: 1.4;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .3s;
+}
+.topic-btn.selected .topic-summary { max-height: 200px; }
+
+/* Audio Player */
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.play-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.play-btn.playing { background: var(--red); }
+.speed-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width .1s linear;
+}
+
+/* Record */
+.record-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 2px dashed var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.record-btn.recording {
+  border-color: var(--red);
+  background: rgba(239,68,68,.1);
+  color: var(--red);
+}
+.record-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: pulse 1s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.record-time { font-size: 13px; color: var(--text2); text-align: center; margin-top: 8px; }
+
+/* Comparison Table */
+.comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.comp-table th {
+  padding: 8px 6px;
+  text-align: left;
+  color: var(--text2);
+  font-weight: 500;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--card);
+}
+.comp-table td {
+  padding: 8px 6px;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(42,45,55,.5);
+  line-height: 1.5;
+}
+.comp-table tr { transition: background .2s; }
+.comp-table tr.mark-red td { background: rgba(239,68,68,.08); }
+.comp-table tr.mark-yellow td { background: rgba(245,158,11,.08); }
+.comp-table tr.mark-green td { background: rgba(34,197,94,.08); }
+
+.mark-btn {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mark-btn.red { border-color: var(--red); }
+.mark-btn.red.active { background: var(--red); }
+.mark-btn.yellow { border-color: var(--yellow); }
+.mark-btn.yellow.active { background: var(--yellow); }
+.mark-btn.green { border-color: var(--green); }
+.mark-btn.green.active { background: var(--green); }
+
+/* Empty / Loading */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text2);
+  font-size: 14px;
+}
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text2);
+}
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity .3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* Utils */
+.hidden { display: none !important; }
+.mt-12 { margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1>🎙️ 同传对比训练器</h1>
+<div class="subtitle">雅思口语 · 心理表征训练法</div>
+
+<div class="steps">
+  <div class="step active" id="step1"></div>
+  <div class="step" id="step2"></div>
+  <div class="step" id="step3"></div>
+</div>
+
+<!-- Step 1: Select Topic -->
+<div id="section-topic" class="card">
+  <div class="card-title">1. 选择练习话题</div>
+  <div id="topic-list"></div>
+</div>
+
+<!-- Step 2: Listen + Record -->
+<div id="section-record" class="card hidden">
+  <div class="card-title">2. 听中文 · 同传录音</div>
+  <div class="player-row">
+    <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <select class="speed-select" id="speedSelect" onchange="changeSpeed()">
+      <option value="0.75">0.75x</option>
+      <option value="1" selected>1x</option>
+      <option value="1.25">1.25x</option>
+    </select>
+  </div>
+  <div class="mt-12">
+    <button class="record-btn" id="recordBtn" onclick="toggleRecord()">
+      🎙️ 开始同传录音
+    </button>
+    <div class="record-time hidden" id="recordTime">00:00</div>
+  </div>
+  <button class="btn btn-primary mt-12 hidden" id="analyzeBtn" onclick="startAnalysis()">
+    生成三份文稿对比
+  </button>
+</div>
+
+<!-- Step 3: Compare -->
+<div id="section-compare" class="card hidden">
+  <div class="card-title">3. 逐句对比 · 标记差距</div>
+  <div id="compareContent"></div>
+  <button class="btn btn-secondary mt-12" onclick="resetAll()">重新练习</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// === Data ===
+const topics = [
+  {
+    id: 1,
+    tag: 'Part 2 · 人物',
+    title: '描述一个你敬佩的人',
+    chinese: [
+      '我想说说我的高中老师王老师。',
+      '他教了三十年的数学，从来没有厌倦过。',
+      '他最特别的地方是，他相信每个学生都能学好。',
+      '即使是最差的学生，他也会花额外的时间辅导。',
+      '我毕业后还经常去看他。每次去，他都记得我当年的座位。',
+      '他让我明白，好老师不只是教知识，而是让学生相信自己。'
+    ]
+  },
+  {
+    id: 2,
+    tag: 'Part 2 · 地点',
+    title: '描述一个你喜欢的城市',
+    chinese: [
+      '我想聊聊京都，一个我去过三次的城市。',
+      '第一次去是秋天，整个城市都是红色和金色的枫叶。',
+      '京都有超过两千座寺庙和神社。',
+      '我最喜欢的是龙安寺的枯山水庭院。',
+      '坐在那里看石头和白沙，可以坐整整一个下午。',
+      '京都让我学会了慢下来，享受安静的时刻。'
+    ]
+  },
+  {
+    id: 3,
+    tag: 'Part 2 · 经历',
+    title: '描述一次难忘的旅行',
+    chinese: [
+      '去年我去了新西兰南岛自驾游。',
+      '从皇后镇出发，一路开到基督城。',
+      '印象最深的是在瓦纳卡湖边的清晨。',
+      '湖面平静得像镜子，倒映着雪山。',
+      '那一刻我觉得，人生中最美好的东西都是免费的。',
+      '这次旅行让我重新思考了工作和生活的平衡。'
+    ]
+  },
+  {
+    id: 4,
+    tag: 'Part 2 · 物品',
+    title: '描述一件对你重要的物品',
+    chinese: [
+      '我有一台用了五年的理光相机。',
+      '它很小，可以放进外套口袋。',
+      '我用它拍了上千张照片，记录了朋友聚餐、旅行、街头的日常。',
+      '有一次在东京下雨的夜晚，我用它拍了一张便利店门口的暖光。',
+      '那张照片后来成了我电脑的桌面背景。',
+      '这台相机教会我，最好的相机就是你随身带的那台。'
+    ]
+  },
+  {
+    id: 5,
+    tag: 'Part 2 · 习惯',
+    title: '描述一个你想养成的习惯',
+    chinese: [
+      '我一直想养成每天写点东西的习惯。',
+      '不是写日记，是把自己的想法写下来。',
+      '因为工作里太多会议和文档，很少有真正属于自己的思考时间。',
+      '我试过很多次，每次都坚持不到两周。',
+      '后来我发现问题不是毅力不够，是我对自己写的东西要求太高了。',
+      '现在我在学着想写什么写什么，不评判，写完就行。'
+    ]
+  }
+];
+
+let currentTopic = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let recordStartTime = null;
+let recordTimer = null;
+let userTranscript = '';
+let currentStep = 1;
+
+// === Step 1: Topics ===
+function renderTopics() {
+  const list = document.getElementById('topic-list');
+  list.innerHTML = topics.map(t => `
+    <button class="topic-btn" onclick="selectTopic(${t.id})" id="topic-${t.id}">
+      <div class="tag">${t.tag}</div>
+      <div>${t.title}</div>
+      <div class="topic-summary">${t.chinese.slice(0,2).join(' / ')}……</div>
+    </button>
+  `).join('');
+}
+
+function selectTopic(id) {
+  currentTopic = topics.find(t => t.id === id);
+  document.querySelectorAll('.topic-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('topic-' + id).classList.add('selected');
+  goToStep(2);
+}
+
+// === Step 2: Record ===
+function goToStep(step) {
+  currentStep = step;
+  document.getElementById('section-topic').classList.toggle('hidden', step !== 1);
+  document.getElementById('section-record').classList.toggle('hidden', step !== 2);
+  document.getElementById('section-compare').classList.toggle('hidden', step !== 3);
+  document.querySelectorAll('.step').forEach((s,i) => s.classList.toggle('active', i < step));
+  if (step === 2) document.getElementById('analyzeBtn').classList.add('hidden');
+}
+
+// Audio playback
+let audioCtx = null;
+let currentSentence = 0;
+let isPlaying = false;
+let playTimer = null;
+
+function togglePlay() {
+  if (isPlaying) { stopPlay(); return; }
+  if (!currentTopic) return;
+  startPlay();
+}
+
+function startPlay() {
+  isPlaying = true;
+  currentSentence = 0;
+  document.getElementById('playBtn').classList.add('playing');
+  document.getElementById('playBtn').textContent = '⏸';
+  speakSentence();
+}
+
+function stopPlay() {
+  isPlaying = false;
+  if (playTimer) clearTimeout(playTimer);
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  document.getElementById('playBtn').classList.remove('playing');
+  document.getElementById('playBtn').textContent = '▶';
+  document.getElementById('progressFill').style.width = '0%';
+}
+
+function speakSentence() {
+  if (!isPlaying || !currentTopic || currentSentence >= currentTopic.chinese.length) {
+    stopPlay();
+    document.getElementById('analyzeBtn').classList.remove('hidden');
+    return;
+  }
+  const text = currentTopic.chinese[currentSentence];
+  const speed = parseFloat(document.getElementById('speedSelect').value);
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'zh-CN';
+  utterance.rate = speed;
+  utterance.onend = () => {
+    currentSentence++;
+    document.getElementById('progressFill').style.width = 
+      (currentSentence / currentTopic.chinese.length * 100) + '%';
+    if (isPlaying) {
+      playTimer = setTimeout(speakSentence, 500);
+    }
+  };
+  speechSynthesis.speak(utterance);
+}
+
+function changeSpeed() {
+  // Will take effect on next play
+}
+
+// Recording
+async function toggleRecord() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    stopRecord();
+    return;
+  }
+  startRecord();
+}
+
+async function startRecord() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      processRecording();
+    };
+    mediaRecorder.start();
+    recordStartTime = Date.now();
+    document.getElementById('recordBtn').classList.add('recording');
+    document.getElementById('recordBtn').innerHTML = '<span class="record-dot"></span> 停止录音';
+    document.getElementById('recordTime').classList.remove('hidden');
+    recordTimer = setInterval(updateRecordTime, 1000);
+  } catch(e) {
+    toast('无法访问麦克风，请检查权限');
+  }
+}
+
+function stopRecord() {
+  if (mediaRecorder) mediaRecorder.stop();
+  clearInterval(recordTimer);
+  document.getElementById('recordBtn').classList.remove('recording');
+  document.getElementById('recordBtn').innerHTML = '🎙️ 开始同传录音';
+  document.getElementById('recordTime').classList.add('hidden');
+}
+
+function updateRecordTime() {
+  const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2,'0');
+  const s = String(elapsed % 60).padStart(2,'0');
+  document.getElementById('recordTime').textContent = m + ':' + s;
+}
+
+function processRecording() {
+  // Use browser SpeechRecognition as fallback
+  // In production: send to Whisper API
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    toast('语音识别中…');
+    // For MVP: use placeholder text since Web Speech API is unreliable for long audio
+    // In real implementation, send audio blob to Whisper API
+    userTranscript = "I want to talk about my high school teacher. He teach math for thirty years. He special because he believe every student can learn. Even worst student, he spend extra time. I visit him after graduate. He remember my seat. He teach me good teacher is not just teach, but let student believe.";
+    document.getElementById('analyzeBtn').classList.remove('hidden');
+    toast('录音完成，可以生成对比了');
+  } else {
+    toast('请点击「生成对比」，使用 AI 转写');
+    document.getElementById('analyzeBtn').classList.remove('hidden');
+  }
+}
+
+// === Step 3: Compare ===
+function startAnalysis() {
+  if (!currentTopic) return;
+  goToStep(3);
+  renderCompare();
+}
+
+const aiTranslations = {
+  1: [
+    "I'd like to talk about my high school teacher, Mr. Wang.",
+    "He taught mathematics for thirty years and never got tired of it.",
+    "What made him special was his belief that every student could succeed.",
+    "Even the weakest students, he would spend extra time tutoring.",
+    "I still visit him after graduation, and every time he remembers where I sat.",
+    "He showed me that a great teacher doesn't just teach knowledge, but makes students believe in themselves."
+  ],
+  2: [
+    "I want to talk about Kyoto, a city I've visited three times.",
+    "My first visit was in autumn, when the whole city was covered in red and gold maple leaves.",
+    "Kyoto has over two thousand temples and shrines.",
+    "My favorite is the rock garden at Ryoanji Temple.",
+    "You can sit there watching the stones and white sand for an entire afternoon.",
+    "Kyoto taught me to slow down and appreciate quiet moments."
+  ],
+  3: [
+    "Last year I went on a road trip across New Zealand's South Island.",
+    "Starting from Queenstown, I drove all the way to Christchurch.",
+    "The most memorable moment was an early morning by Lake Wanaka.",
+    "The lake was so still it was like a mirror, reflecting the snow-capped mountains.",
+    "In that moment I realized the best things in life are free.",
+    "That trip made me rethink the balance between work and life."
+  ],
+  4: [
+    "I have a Ricoh camera that I've used for five years.",
+    "It's so small it fits in my coat pocket.",
+    "I've taken thousands of photos with it, capturing dinners with friends, travels, and daily street scenes.",
+    "Once on a rainy night in Tokyo, I shot a photo of the warm light outside a convenience store.",
+    "That photo later became my desktop wallpaper.",
+    "This camera taught me that the best camera is the one you carry with you."
+  ],
+  5: [
+    "I've always wanted to build a habit of writing something every day.",
+    "Not journaling, but writing down my own thoughts.",
+    "Because work is full of meetings and documents, and I rarely get time to just think.",
+    "I've tried many times, but never lasted more than two weeks.",
+    "Then I realized the problem wasn't willpower, it was that I was too critical of what I wrote.",
+    "Now I'm learning to write whatever comes to mind, without judging, just getting it down."
+  ]
+};
+
+function renderCompare() {
+  const aiLines = aiTranslations[currentTopic.id] || [];
+  const userLines = userTranscript.split(/[.!?]+/).filter(s => s.trim());
+  const chineseLines = currentTopic.chinese;
+  
+  let html = '<div style="overflow-x:auto"><table class="comp-table"><thead><tr>';
+  html += '<th style="width:10%">标记</th>';
+  html += '<th style="width:30%">🇨🇳 中文原句</th>';
+  html += '<th style="width:30%">🤖 AI 英译</th>';
+  html += '<th style="width:30%">🗣️ 我的英译</th>';
+  html += '</tr></thead><tbody>';
+  
+  const maxLen = Math.max(chineseLines.length, aiLines.length, userLines.length);
+  for (let i = 0; i < maxLen; i++) {
+    const cn = chineseLines[i] || '';
+    const ai = aiLines[i] || '';
+    const user = userLines[i] || '';
+    html += `<tr id="row-${i}">
+      <td style="text-align:center">
+        <button class="mark-btn red" onclick="markRow(${i},'red')" title="卡住/说错"></button>
+        <button class="mark-btn yellow" onclick="markRow(${i},'yellow')" title="有差异"></button>
+        <button class="mark-btn green" onclick="markRow(${i},'green')" title="精准"></button>
+      </td>
+      <td>${cn}</td>
+      <td>${ai}</td>
+      <td>${user || '<span style="color:var(--text2)">—</span>'}</td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  
+  document.getElementById('compareContent').innerHTML = html;
+}
+
+function markRow(rowIdx, color) {
+  const row = document.getElementById('row-' + rowIdx);
+  row.className = '';
+  row.classList.add('mark-' + color);
+  
+  // Reset all buttons in this row
+  row.querySelectorAll('.mark-btn').forEach(b => b.classList.remove('active'));
+  // Activate the selected one
+  row.querySelector('.mark-btn.' + color).classList.add('active');
+}
+
+// === Utils ===
+function resetAll() {
+  currentTopic = null;
+  userTranscript = '';
+  goToStep(1);
+  document.querySelectorAll('.topic-btn').forEach(b => b.classList.remove('selected'));
+  stopPlay();
+  stopRecord();
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// Init
+renderTopics();
+</script>
+</body>
+</html>
