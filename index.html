@@ -249,6 +249,36 @@ h1 { font-size: 20px; margin-bottom: 4px; }
 }
 .toast.show { opacity: 1; }
 
+/* Custom input */
+.custom-textarea {
+  width: 100%;
+  min-height: 120px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+.custom-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.custom-hint {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 6px;
+}
+.publish-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.publish-btns .btn { flex: 1; }
+
 /* Utils */
 .hidden { display: none !important; }
 .mt-12 { margin-top: 12px; }
@@ -269,6 +299,12 @@ h1 { font-size: 20px; margin-bottom: 4px; }
 <div id="section-topic" class="card">
   <div class="card-title">1. 选择练习话题</div>
   <div id="topic-list"></div>
+  <button class="btn btn-secondary mt-12" onclick="showCustomInput()">📝 自定义选段</button>
+  <div id="customInput" class="hidden mt-12">
+    <textarea class="custom-textarea" id="customText" placeholder="粘贴中文选段，每句一行。例如：&#10;我想说说我的高中老师王老师。&#10;他教了三十年的数学，从来没有厌倦过。&#10;……"></textarea>
+    <div class="custom-hint">💡 从群里复制选段粘贴到这里，每句换行。</div>
+    <button class="btn btn-primary mt-12" onclick="startCustomPractice()">开始练习</button>
+  </div>
 </div>
 
 <!-- Step 2: Listen + Record -->
@@ -298,7 +334,10 @@ h1 { font-size: 20px; margin-bottom: 4px; }
 <div id="section-compare" class="card hidden">
   <div class="card-title">3. 逐句对比 · 标记差距</div>
   <div id="compareContent"></div>
-  <button class="btn btn-secondary mt-12" onclick="resetAll()">重新练习</button>
+  <div class="publish-btns">
+    <button class="btn btn-secondary" onclick="resetAll()">重新练习</button>
+    <button class="btn btn-primary" onclick="publishCard()">📤 发布打卡</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -635,6 +674,84 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// === Custom Text ===
+function showCustomInput() {
+  document.getElementById('customInput').classList.toggle('hidden');
+}
+
+function startCustomPractice() {
+  const text = document.getElementById('customText').value.trim();
+  if (!text) { toast('请先粘贴选段内容'); return; }
+  const lines = text.split('\n').filter(s => s.trim());
+  if (lines.length < 3) { toast('至少需要3句才能练习'); return; }
+  currentTopic = {
+    id: 0,
+    tag: '自定义',
+    title: '群友选段',
+    chinese: lines
+  };
+  goToStep(2);
+}
+
+// === Publish to Feishu ===
+const FEISHU_WEBHOOK = 'https://open.feishu.cn/open-apis/bot/v2/hook/ca33f79a-f7ae-4947-b9f5-2e4450a3311e';
+
+function getMarkStats() {
+  let red = 0, yellow = 0, green = 0;
+  document.querySelectorAll('.comp-table tbody tr').forEach(row => {
+    if (row.classList.contains('mark-red')) red++;
+    else if (row.classList.contains('mark-yellow')) yellow++;
+    else if (row.classList.contains('mark-green')) green++;
+  });
+  return { red, yellow, green, total: red + yellow + green };
+}
+
+async function publishCard() {
+  const stats = getMarkStats();
+  if (stats.total === 0) { toast('请先标记至少一句'); return; }
+  
+  const name = document.getElementById('publisherName')?.value || '群友';
+  const title = currentTopic?.title || '自定义选段';
+  const greenPct = stats.total > 0 ? Math.round(stats.green / stats.total * 100) : 0;
+  const today = new Date().toLocaleDateString('zh-CN', { month:'long', day:'numeric' });
+  
+  const card = {
+    msg_type: 'interactive',
+    card: {
+      header: {
+        title: { tag: 'plain_text', content: `🎙️ 口语打卡 · ${title}` },
+        template: 'purple'
+      },
+      elements: [
+        { tag: 'div', text: { tag: 'lark_md', content: `**${name}** · ${today}` } },
+        { tag: 'hr' },
+        { tag: 'div', text: { tag: 'lark_md', content: `📊 标记统计：🔴 ${stats.red} 处卡住  🟡 ${stats.yellow} 处差异  🟢 ${stats.green} 处精准（${greenPct}%）` } },
+        { tag: 'div', text: { tag: 'lark_md', content: `📖 选段预览：${currentTopic.chinese.slice(0,2).join(' / ')}……` } },
+        { tag: 'hr' },
+        { tag: 'div', text: { tag: 'lark_md', content: `🔗 一起练：[flicy.github.io/shadow-interpret/](https://flicy.github.io/shadow-interpret/)` } }
+      ]
+    }
+  };
+
+  try {
+    const r = await fetch(FEISHU_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(card)
+    });
+    const d = await r.json();
+    if (d.code === 0) {
+      toast('✅ 打卡已发到飞书群');
+    } else {
+      toast('发送失败，请复制内容手动发到群里');
+      console.error(d);
+    }
+  } catch(e) {
+    toast('网络不通，请复制内容手动发到群里');
+    console.error(e);
+  }
 }
 
 // Init
